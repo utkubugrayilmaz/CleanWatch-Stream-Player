@@ -1,0 +1,14 @@
+# PyCharm ayarları
+.idea/
+
+# Python sanal ortamı (Burası çok önemli, venv github'a atılmaz)
+venv/
+.venv/
+env/
+
+# Derlenmiş dosyalar
+__pycache__/
+*.pyc
+
+# İşletim sistemi dosyaları
+.DS_Store
