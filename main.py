@@ -33,7 +33,7 @@ class ClickableSlider(QSlider):
 class CleanWatchApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CleanWatch - Player Pro")
+        self.setWindowTitle("CleanWatch - Universal Stream Player")
         self.setGeometry(100, 100, 1000, 700)
         self.setStyleSheet("background-color: #2c3e50; color: white;")
 
@@ -93,11 +93,11 @@ class CleanWatchApp(QMainWindow):
 
         # Link Girişi
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("PuhuTV Linkini Buraya Yapıştır...")
+        self.url_input.setPlaceholderText("Paste Video Link Here (YouTube, PuhuTV, Twitch etc.)...")
         self.url_input.setStyleSheet("padding: 8px; color: black; background-color: #ecf0f1; border-radius: 5px;")
 
         # Yükle Butonu
-        self.load_button = QPushButton("Yükle ve Oynat")
+        self.load_button = QPushButton("Load & Play")
         self.load_button.setCursor(Qt.PointingHandCursor)
         self.load_button.setStyleSheet(
             "background-color: #27ae60; padding: 8px; font-weight: bold; border-radius: 5px;")
@@ -112,7 +112,7 @@ class CleanWatchApp(QMainWindow):
         self.main_layout.addLayout(self.controls_layout)
 
         # Durum Etiketi
-        self.status_label = QLabel("Hazır - Space: Durdur | Yön Tuşları: İleri/Geri | Çift Tık: Tam Ekran")
+        self.status_label = QLabel("Ready - Space: Play/Pause | Arrows: Seek | Dbl Click: Fullscreen")
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet("font-size: 11px; color: #bdc3c7;")
         self.main_layout.addWidget(self.status_label)
@@ -120,10 +120,10 @@ class CleanWatchApp(QMainWindow):
     def load_video(self):
         link = self.url_input.text().strip()
         if not link:
-            self.status_label.setText("Link girmediniz!")
+            self.status_label.setText("Please enter a valid link!")
             return
 
-        self.status_label.setText("Video aranıyor...")
+        self.status_label.setText("Processing link...")
         self.load_button.setEnabled(False)
         QApplication.processEvents()
 
@@ -146,7 +146,7 @@ class CleanWatchApp(QMainWindow):
                 self.media_player.play()
                 self.timer.start()
 
-                self.status_label.setText(f"Oynatılıyor: {result['title']}")
+                self.status_label.setText(f"Playing: {result['title']}")
                 self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
 
                 # --- ODAK DÜZELTME ---
@@ -154,11 +154,11 @@ class CleanWatchApp(QMainWindow):
                 # ---------------------
 
             else:
-                self.status_label.setText("Hata: Video bulunamadı")
-                QMessageBox.critical(self, "Hata", result['message'])
+                self.status_label.setText("Error: Video not found")
+                QMessageBox.critical(self, "Error", f"Failed to load video:\n{result['message']}")
 
         except Exception as e:
-            self.status_label.setText(f"Kritik Hata: {str(e)}")
+            self.status_label.setText(f"Critical Error: {str(e)}")
 
         finally:
             self.load_button.setEnabled(True)
@@ -167,11 +167,11 @@ class CleanWatchApp(QMainWindow):
         if self.media_player.is_playing():
             self.media_player.pause()
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-            self.status_label.setText("Duraklatıldı")
+            self.status_label.setText("Paused")
         else:
             self.media_player.play()
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-            self.status_label.setText("Oynatılıyor")
+            self.status_label.setText("Playing")
 
     def set_volume(self, volume):
         self.media_player.audio_set_volume(volume)
@@ -211,13 +211,13 @@ class CleanWatchApp(QMainWindow):
                 current = self.media_player.get_time()
                 total = self.media_player.get_length()
                 self.media_player.set_time(min(current + 10000, total))
-                self.status_label.setText("⏩ +10 Saniye")
+                self.status_label.setText("⏩ +10 Seconds")
 
         elif event.key() == Qt.Key_Left:
             if self.media_player.is_playing():
                 current = self.media_player.get_time()
                 self.media_player.set_time(max(current - 10000, 0))
-                self.status_label.setText("⏪ -10 Saniye")
+                self.status_label.setText("⏪ -10 Seconds")
 
         elif event.key() == Qt.Key_Escape:
             if self.isFullScreen():
