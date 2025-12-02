@@ -3,25 +3,46 @@ import yt_dlp
 
 class VideoEngine:
     def __init__(self):
-        # yt-dlp ayarları
-        self.ydl_opts = {
-            'format': 'best',  # En iyi kaliteyi seç
-            'quiet': True,  # Terminali loglarla doldurma
-            'no_warnings': True,  # Uyarıları gizle
+        self.base_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'noplaylist': True,
+            'geo_bypass': True,
+            # Force Generic: Bilinmeyen sitelerde gömülü video ara
+            'extract_flat': 'in_playlist',
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            }
         }
 
     def extract_stream_data(self, page_url):
-        """
-        Verilen web linkinden (PuhuTV vb.) video başlığını ve
-        stream (m3u8/mp4) linkini çeker.
-        """
+        # Platforma Özel Stratejiler
+        if "youtube.com" in page_url or "youtu.be" in page_url:
+            print("Tespit: YouTube -> MP4 Modu")
+            self.base_opts['format'] = 'best[ext=mp4][protocol^=http]/best[ext=mp4]/best'
+        elif "twitch.tv" in page_url:
+            print("Tespit: Twitch -> Best Modu")
+            self.base_opts['format'] = 'best'  # Twitch genelde m3u8 verir
+        else:
+            print("Tespit: Genel Platform -> HLS/Standart Mod")
+            self.base_opts['format'] = 'best[protocol^=m3u8]/best[ext=mp4]/best'
+
         try:
-            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-                # download=False çok önemli, yoksa videoyu indirmeye başlar!
+            with yt_dlp.YoutubeDL(self.base_opts) as ydl:
                 info_dict = ydl.extract_info(page_url, download=False)
+
+                if 'entries' in info_dict:
+                    info_dict = info_dict['entries'][0]
 
                 video_url = info_dict.get('url', None)
                 video_title = info_dict.get('title', 'Bilinmeyen Video')
+
+                # Eğer URL yoksa hata fırlat
+                if not video_url:
+                    raise Exception("Video linki ayıklanamadı (DRM veya Desteklenmeyen Site).")
+
+                print(f"DEBUG -> Başlık: {video_title}")
+                print(f"DEBUG -> URL: {video_url}")
 
                 return {
                     "status": "success",
@@ -30,28 +51,23 @@ class VideoEngine:
                 }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+            error_msg = str(e)
+            # Kullanıcı dostu hata mesajları
+            if "HTTP Error 403" in error_msg:
+                return {"status": "error", "message": "Erişim Reddedildi (403). Site bot koruması kullanıyor."}
+            elif "DRM" in error_msg or "This video is DRM protected" in error_msg:
+                return {"status": "error", "message": "Bu video DRM korumalı (Netflix/Exxen vb.). Oynatılamaz."}
+            elif "Unsupported URL" in error_msg:
+                return {"status": "error", "message": "Bu site henüz desteklenmiyor."}
+            else:
+                return {"status": "error", "message": f"Hata: {error_msg[:100]}..."}
 
 
-# --- TEST ALANI ---
-# Bu dosya direkt çalıştırılırsa burası çalışır.
-# Modül olarak çağrıldığında burası çalışmaz.
 if __name__ == "__main__":
-    print("Test başlıyor...")
-    # Behzat Ç. 1. Bölüm Linki (Örnek)
-    test_link = "https://puhutv.com/behzat-c-43-bolum-izle"
-
+    # Testler
+    # 1. Show TV Canlı (Genelde youtube veya kendi sitesi) - Çalışır
+    # 2. Twitch - Çalışır
+    # 3. Korsan Film Sitesi - Muhtemelen Çalışmaz (Embed sorunu)
+    test_link = "https://www.showtv.com.tr/canli-yayin"
     engine = VideoEngine()
-    sonuc = engine.extract_stream_data(test_link)
-
-    print("-" * 30)
-    print(f"Durum: {sonuc['status']}")
-    if sonuc['status'] == 'success':
-        print(f"Başlık: {sonuc['title']}")
-        print(f"Stream Linki: {sonuc['url']}")
-    else:
-        print(f"Hata: {sonuc['message']}")
-    print("-" * 30)
+    print(engine.extract_stream_data(test_link))

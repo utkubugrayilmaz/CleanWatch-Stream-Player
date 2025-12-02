@@ -4,7 +4,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLineEdit, QPushButton, QLabel,
                              QFrame, QMessageBox, QSlider, QStyle)
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QIcon
 
 # --- VLC YOLUNU GÖSTERME KODU ---
 vlc_path = r"C:\Program Files\VideoLAN\VLC"
@@ -16,23 +15,37 @@ import vlc
 from video_engine import VideoEngine
 
 
+# --- ÖZEL SLIDER SINIFI (Tıklayınca Işınlanan) ---
+class ClickableSlider(QSlider):
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            val = self.minimum() + ((self.maximum() - self.minimum()) * event.x()) / self.width()
+            self.setValue(int(val))
+            event.accept()
+            # Tıklandığı an sinyalleri tetikle
+            self.sliderMoved.emit(int(val))
+            self.sliderPressed.emit()
+        super().mousePressEvent(event)
+
+
+# -------------------------------------------------
+
 class CleanWatchApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CleanWatch - Behzat Ç. Player Pro")
+        self.setWindowTitle("CleanWatch - Player Pro")
         self.setGeometry(100, 100, 1000, 700)
         self.setStyleSheet("background-color: #2c3e50; color: white;")
 
         # Motor Hazırlığı
         self.engine = VideoEngine()
 
-        # --- VLC HAZIRLIĞI (DÜZELTİLEN KISIM BURASI) ---
-        # --avcodec-hw=none: Ekran kartı hatalarını önler, işlemciyi kullanır.
+        # --- VLC HAZIRLIĞI (DÜZELTİLDİ) ---
+        # Sadece çalışan parametreyi bıraktık. Hata veren silindi.
         self.instance = vlc.Instance("--avcodec-hw=none")
         self.media_player = self.instance.media_player_new()
-        # -----------------------------------------------
 
-        # Zamanlayıcı (Slider'ı güncellemek için)
+        # Zamanlayıcı
         self.timer = QTimer(self)
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.update_ui_status)
@@ -48,15 +61,15 @@ class CleanWatchApp(QMainWindow):
         # 1. Video Alanı
         self.video_frame = QFrame()
         self.video_frame.setStyleSheet("background-color: black; border: 2px solid #34495e;")
+        self.video_frame.mouseDoubleClickEvent = self.toggle_fullscreen
         self.main_layout.addWidget(self.video_frame, stretch=1)
 
         # 2. Kontrol Paneli
         self.controls_layout = QVBoxLayout()
 
-        # Zaman Çubuğu (Slider)
-        self.position_slider = QSlider(Qt.Horizontal)
+        # Tıklanabilir Slider
+        self.position_slider = ClickableSlider(Qt.Horizontal)
         self.position_slider.setMaximum(1000)
-        # Sadece tıklandığında ve bırakıldığında tetiklenir (Donmayı önler)
         self.position_slider.sliderPressed.connect(self.slider_pressed)
         self.position_slider.sliderReleased.connect(self.slider_released)
         self.controls_layout.addWidget(self.position_slider)
@@ -91,7 +104,7 @@ class CleanWatchApp(QMainWindow):
         self.load_button.clicked.connect(self.load_video)
 
         self.buttons_layout.addWidget(self.play_button)
-        self.buttons_layout.addWidget(self.volume_slider)  # Ses slider'ı eklendi
+        self.buttons_layout.addWidget(self.volume_slider)
         self.buttons_layout.addWidget(self.url_input)
         self.buttons_layout.addWidget(self.load_button)
 
@@ -99,8 +112,9 @@ class CleanWatchApp(QMainWindow):
         self.main_layout.addLayout(self.controls_layout)
 
         # Durum Etiketi
-        self.status_label = QLabel("Hazır")
+        self.status_label = QLabel("Hazır - Space: Durdur | Yön Tuşları: İleri/Geri | Çift Tık: Tam Ekran")
         self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet("font-size: 11px; color: #bdc3c7;")
         self.main_layout.addWidget(self.status_label)
 
     def load_video(self):
@@ -122,7 +136,6 @@ class CleanWatchApp(QMainWindow):
                 media = self.instance.media_new(result['url'])
                 self.media_player.set_media(media)
 
-                # Pencere ID bağlama
                 if sys.platform.startswith('linux'):
                     self.media_player.set_xwindow(self.video_frame.winId())
                 elif sys.platform == "win32":
@@ -135,6 +148,10 @@ class CleanWatchApp(QMainWindow):
 
                 self.status_label.setText(f"Oynatılıyor: {result['title']}")
                 self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+
+                # --- ODAK DÜZELTME ---
+                self.setFocus()
+                # ---------------------
 
             else:
                 self.status_label.setText("Hata: Video bulunamadı")
@@ -157,18 +174,18 @@ class CleanWatchApp(QMainWindow):
             self.status_label.setText("Oynatılıyor")
 
     def set_volume(self, volume):
-        """Sesi ayarlar"""
         self.media_player.audio_set_volume(volume)
 
     def update_ui_status(self):
-        """Slider'ı video süresine göre güncelle"""
         if self.media_player.is_playing() and not self.position_slider.isSliderDown():
             length = self.media_player.get_length()
             time = self.media_player.get_time()
 
             if length > 0:
                 new_pos = int((time / length) * 1000)
+                self.position_slider.blockSignals(True)
                 self.position_slider.setValue(new_pos)
+                self.position_slider.blockSignals(False)
 
     def slider_pressed(self):
         self.timer.stop()
@@ -182,6 +199,36 @@ class CleanWatchApp(QMainWindow):
             self.media_player.set_time(target_time)
 
         self.timer.start()
+        self.setFocus()  # Slider bırakılınca odağı pencereye ver
+
+    def keyPressEvent(self, event):
+        """Klavye Kısayolları"""
+        if event.key() == Qt.Key_Space:
+            self.play_pause()
+
+        elif event.key() == Qt.Key_Right:
+            if self.media_player.is_playing():
+                current = self.media_player.get_time()
+                total = self.media_player.get_length()
+                self.media_player.set_time(min(current + 10000, total))
+                self.status_label.setText("⏩ +10 Saniye")
+
+        elif event.key() == Qt.Key_Left:
+            if self.media_player.is_playing():
+                current = self.media_player.get_time()
+                self.media_player.set_time(max(current - 10000, 0))
+                self.status_label.setText("⏪ -10 Saniye")
+
+        elif event.key() == Qt.Key_Escape:
+            if self.isFullScreen():
+                self.toggle_fullscreen(None)
+
+    def toggle_fullscreen(self, event):
+        if self.isFullScreen():
+            self.showNormal()
+            self.controls_layout.parentWidget().show()
+        else:
+            self.showFullScreen()
 
     def closeEvent(self, event):
         self.media_player.stop()
