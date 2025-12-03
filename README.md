@@ -102,7 +102,7 @@ yt-dlp kullanarak ham yayın akışını çeker ve VLC motoru üzerinden işler;
 
 #### Seçenek 1: Hazır EXE (Önerilen)
 Python kurulumu gerekmez.
-1.  Sağ taraftaki [suspicious link removed] sayfasına gidin.
+1.  Sağ taraftaki Releases sayfasına gidin.
 2.  CleanWatch_Pro.exe dosyasını indirin.
 3.  **Gereksinim:** Sisteminizde **[VLC Media Player (64-bit)](https://www.videolan.org/vlc/)** kurulu olduğundan emin olun.
 4.  Uygulamayı çalıştırın, bir video linki yapıştırın ve keyfini çıkarın!
