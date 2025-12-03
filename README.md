@@ -70,6 +70,9 @@ pip install -r requirements.txt
 python main.py
 ```
 
+⚠️ Disclaimer
+This project is for educational purposes only. The developer is not responsible for any misuse of this software.
+
 ## 🇹🇷 Türkçe Açıklama
 
 **CleanWatch** YouTube, PuhuTV, Twitch gibi platformlardaki videoları, web tabanlı reklamlara ve takipçilere (tracker) maruz kalmadan, doğrudan masaüstünüzde izlemenizi sağlayan açık kaynaklı, hafif bir oynatıcıdır.
@@ -117,4 +120,7 @@ pip install -r requirements.txt
 
 # Uygulamayı başlatın
 python main.py
+```
 
+⚠️ Yasal Uyarı
+Bu proje sadece eğitim amaçlı geliştirilmiştir. Yazılımın kötüye kullanımından geliştirici sorumlu değildir.
